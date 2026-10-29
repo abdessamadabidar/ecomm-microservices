@@ -81,7 +81,7 @@ function OrderForm({ products, chosenProduct, setChosenProduct, onSubmit, submit
       <label className="wide">Customer email<input name="customerEmail" type="email" placeholder="demo@example.com" required maxLength="255" /></label>
       <div className="form-footer wide"><button id="place-order" type="submit" disabled={submitting || !product || product.quantity < 1}>{submitting ? 'Placing order…' : 'Place order'}</button><span id="order-result" className={`small form-result ${result.error ? 'error' : 'success'}`} role="status">{result.message}</span></div>
     </form>
-    <div className="hint"><strong>Try both outcomes</strong><p>Place an order with a total of 5,000 or less, then one above 5,000. Watch the payment event and order status change.</p><p>The current backend checks stock but does not reduce it after ordering.</p></div>
+    <div className="hint"><strong>Try both outcomes</strong><p>Place an order with a total of 5,000 or less, then one above 5,000. Watch the payment event and order status change.</p><p>Stock is reserved when an order is placed and returned if payment fails or a pending order is cancelled.</p></div>
   </section>;
 }
 

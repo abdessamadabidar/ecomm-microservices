@@ -91,9 +91,15 @@ The dashboard retries reads every three seconds while visible.
 5. Expand **Browser requests** to compare each submitted JSON body and response.
    Pause auto-refresh or use **Refresh now** as needed.
 
-Existing business behavior: amounts have no currency field, stock is checked but
-not decremented, and notifications are logged rather than emailed. The dashboard
-does not change those behaviors.
+Stock is reserved atomically when an order is placed. A failed payment or a
+cancelled pending order returns that reservation to the product. Confirmed orders
+keep the reduced stock. Amounts have no currency field, and notifications are
+logged rather than emailed.
+
+Inventory reservations are idempotent for an order ID. The order database and
+product database still have no shared transaction; a process crash between their
+updates can leave a reservation behind. A durable outbox or reconciliation job
+would be the next reliability improvement.
 
 ## API additions and observation limits
 

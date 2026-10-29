@@ -6,6 +6,7 @@ import com.ecomm.order_service.entity.OrderStatus;
 import com.ecomm.order_service.event.PaymentCompletedEvent;
 import com.ecomm.order_service.event.PaymentFailedEvent;
 import com.ecomm.order_service.repository.OrderRepository;
+import com.ecomm.order_service.client.ProductClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaymentEventConsumer {
 
     private final OrderRepository orderRepository;
+    private final ProductClient productClient;
 
     @Transactional
     @KafkaListener(
@@ -29,7 +31,7 @@ public class PaymentEventConsumer {
     ) {
 
         Order order = orderRepository
-                .findById(event.orderId())
+                .lockById(event.orderId())
                 .orElseThrow(() ->
                         new IllegalStateException(
                                 "Order not found: "
@@ -37,13 +39,10 @@ public class PaymentEventConsumer {
                         )
                 );
 
-        if (order.getStatus() ==
-                OrderStatus.CONFIRMED) {
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
 
-            log.warn(
-                    "Order {} already confirmed",
-                    order.getId()
-            );
+            log.warn("Ignoring payment completion for order {} in status {}",
+                    order.getId(), order.getStatus());
 
             return;
         }
@@ -71,7 +70,7 @@ public class PaymentEventConsumer {
     ) {
 
         Order order = orderRepository
-                .findById(event.orderId())
+                .lockById(event.orderId())
                 .orElseThrow(() ->
                         new IllegalStateException(
                                 "Order not found: "
@@ -79,11 +78,12 @@ public class PaymentEventConsumer {
                         )
                 );
 
-        if (order.getStatus() ==
-                OrderStatus.PAYMENT_FAILED) {
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
 
             return;
         }
+
+        productClient.release(order.getProductId(), order.getId());
 
         order.setStatus(
                 OrderStatus.PAYMENT_FAILED

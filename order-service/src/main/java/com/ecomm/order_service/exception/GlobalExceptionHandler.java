@@ -55,6 +55,12 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(OrderCancellationNotAllowedException.class)
+    public ResponseEntity<ApiError> handleCancellationNotAllowed(
+            OrderCancellationNotAllowedException ex, HttpServletRequest request) {
+        return buildError(HttpStatus.CONFLICT, "CANCELLATION_NOT_ALLOWED", ex.getMessage(), request.getRequestURI());
+    }
+
     @ExceptionHandler(ProductServiceUnavailableException.class)
     public ResponseEntity<ApiError> handleProductServiceUnavailable(
             ProductServiceUnavailableException ex,
