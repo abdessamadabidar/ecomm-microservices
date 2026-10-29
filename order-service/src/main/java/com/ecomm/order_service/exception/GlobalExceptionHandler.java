@@ -61,6 +61,12 @@ public class GlobalExceptionHandler {
         return buildError(HttpStatus.CONFLICT, "CANCELLATION_NOT_ALLOWED", ex.getMessage(), request.getRequestURI());
     }
 
+    @ExceptionHandler(PaymentRequestNotAllowedException.class)
+    public ResponseEntity<ApiError> handlePaymentRequestNotAllowed(
+            PaymentRequestNotAllowedException ex, HttpServletRequest request) {
+        return buildError(HttpStatus.CONFLICT, "PAYMENT_REQUEST_NOT_ALLOWED", ex.getMessage(), request.getRequestURI());
+    }
+
     @ExceptionHandler(ProductServiceUnavailableException.class)
     public ResponseEntity<ApiError> handleProductServiceUnavailable(
             ProductServiceUnavailableException ex,

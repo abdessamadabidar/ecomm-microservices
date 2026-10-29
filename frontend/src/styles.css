@@ -72,6 +72,8 @@ td { vertical-align: middle; }
 td code { display: block; font-size: 10px; color: #748278; margin-top: 4px; }
 .product-name { overflow-wrap: anywhere; max-width: 220px; display: block; }
 .selected-row { background: #f0f8f3; }
+.order-actions { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.cancellation-result { display: block; margin-bottom: 12px; }
 .empty { color: #7a8980; padding: 25px 12px; text-align: center; font-size: 12px; font-weight: 400; }
 .error-message { color: #9e3737; background: #fff3f1; border: 1px solid #f3d6d0; border-radius: 5px; padding: 10px 12px; margin-bottom: 12px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
 .event-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; color: #66766d; overflow-wrap: anywhere; }

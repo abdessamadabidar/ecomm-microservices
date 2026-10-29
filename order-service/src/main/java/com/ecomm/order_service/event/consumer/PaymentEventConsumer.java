@@ -39,7 +39,7 @@ public class PaymentEventConsumer {
                         )
                 );
 
-        if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
+        if (order.getStatus() != OrderStatus.PAYMENT_PROCESSING) {
 
             log.warn("Ignoring payment completion for order {} in status {}",
                     order.getId(), order.getStatus());
@@ -78,7 +78,7 @@ public class PaymentEventConsumer {
                         )
                 );
 
-        if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
+        if (order.getStatus() != OrderStatus.PAYMENT_PROCESSING) {
 
             return;
         }

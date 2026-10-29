@@ -1,4 +1,4 @@
-export async function request(path, { body, onLog } = {}) {
+export async function request(path, { body, method = body === undefined ? 'GET' : 'POST', onLog } = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
   const started = performance.now();
@@ -8,9 +8,9 @@ export async function request(path, { body, onLog } = {}) {
 
   try {
     const response = await fetch(path, {
-      method: body ? 'POST' : 'GET',
-      headers: body ? { 'Content-Type': 'application/json', Accept: 'application/json' } : { Accept: 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
+      method,
+      headers: body === undefined ? { Accept: 'application/json' } : { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
       signal: controller.signal,
       cache: 'no-store',
     });
@@ -30,7 +30,7 @@ export async function request(path, { body, onLog } = {}) {
     throw new Error(failure);
   } finally {
     clearTimeout(timeout);
-    if (body) onLog?.({ path, body, response: responseBody, status, error: failure,
+    if (method !== 'GET') onLog?.({ method, path, body: body ?? null, response: responseBody, status, error: failure,
       duration: Math.round(performance.now() - started), at: new Date().toISOString() });
   }
 }

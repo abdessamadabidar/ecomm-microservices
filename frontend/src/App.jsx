@@ -16,7 +16,7 @@ function Badge({ children, tone = 'neutral', id }) {
 }
 
 function StatusBadge({ status }) {
-  const tone = ({ CONFIRMED: 'good', COMPLETED: 'good', PENDING_PAYMENT: 'pending', PAYMENT_FAILED: 'bad', FAILED: 'bad' })[status] || 'neutral';
+  const tone = ({ CONFIRMED: 'good', COMPLETED: 'good', PENDING_PAYMENT: 'pending', PAYMENT_PROCESSING: 'pending', PAYMENT_FAILED: 'bad', FAILED: 'bad' })[status] || 'neutral';
   return <Badge tone={tone}>{String(status || 'Unknown').replaceAll('_', ' ')}</Badge>;
 }
 
@@ -35,16 +35,16 @@ function Flow() {
   const nodes = [
     ['API gateway', 'Receives browser requests', '/api/products · /api/orders'],
     ['Order service', 'Looks up the product over HTTP', '→ product-service'],
-    ['Payment service', 'Processes the order amount', 'payment-completed / failed'],
+    ['Payment service', 'Processes payment when requested', 'payment-completed / failed'],
     ['Order + notification', 'Update status and log a notification', 'Notifications also read order-created'],
   ];
   return <section className="panel" aria-labelledby="flow-title">
     <div className="section-heading"><div><h2 id="flow-title">How the services connect</h2><p className="small muted">The configured flow. Select an order below to inspect its observed data.</p></div><Badge>HTTP + Kafka</Badge></div>
     <div className="flow">{nodes.map(([title, description, path], index) => <div className="flow-fragment" key={title}>
       <div className="flow-node"><span className="node-number">0{index + 1}</span><h3>{title}</h3><p>{description}</p><code>{path}</code></div>
-      {index < 3 && <div className="flow-link"><span>{['HTTP', 'order-created', 'Kafka'][index]}</span><span aria-hidden="true">→</span></div>}
+      {index < 3 && <div className="flow-link"><span>{['HTTP', 'payment-requested', 'Kafka'][index]}</span><span aria-hidden="true">→</span></div>}
     </div>)}</div>
-    <p className="flow-note">The existing payment demo accepts totals up to 5,000 and fails larger totals. Notifications are simulated in service logs. Amounts have no configured currency.</p>
+    <p className="flow-note">Orders stay pending until you process payment or cancel. Payment accepts totals up to 5,000 and fails larger totals. Notifications are simulated in service logs. Amounts have no configured currency.</p>
   </section>;
 }
 
@@ -81,25 +81,28 @@ function OrderForm({ products, chosenProduct, setChosenProduct, onSubmit, submit
       <label className="wide">Customer email<input name="customerEmail" type="email" placeholder="demo@example.com" required maxLength="255" /></label>
       <div className="form-footer wide"><button id="place-order" type="submit" disabled={submitting || !product || product.quantity < 1}>{submitting ? 'Placing order…' : 'Place order'}</button><span id="order-result" className={`small form-result ${result.error ? 'error' : 'success'}`} role="status">{result.message}</span></div>
     </form>
-    <div className="hint"><strong>Try both outcomes</strong><p>Place an order with a total of 5,000 or less, then one above 5,000. Watch the payment event and order status change.</p><p>Stock is reserved when an order is placed and returned if payment fails or a pending order is cancelled.</p></div>
+    <div className="hint"><strong>Try both outcomes</strong><p>Place an order, then choose Process payment or Cancel in the Orders table. A total above 5,000 fails when processed.</p><p>Stock is reserved when an order is placed and returned if payment fails or the pending order is cancelled.</p></div>
   </section>;
 }
 
-function Orders({ resource, products, selectedOrder, setSelectedOrder, events }) {
+function Orders({ resource, products, selectedOrder, setSelectedOrder, events, onCancel, cancellingOrder, cancellationResult, onPay, payingOrder, paymentResult }) {
   const order = resource.data.find((item) => item.id === selectedOrder);
   const matching = events.filter((item) => item.orderId === selectedOrder);
   const created = matching.some((item) => item.topic === 'order-created');
+  const requested = matching.some((item) => item.topic === 'payment-requested');
   const payment = matching.find((item) => item.topic === 'payment-completed' || item.topic === 'payment-failed');
   return <section id="orders" className="panel" aria-labelledby="orders-title">
-    <div className="section-heading"><div><h2 id="orders-title">Orders <span id="order-count" className="count">{resource.data.length}</span></h2><p className="small muted">Select an order to filter events and inspect the response.</p></div><ResourceStatus name="orders" resource={resource} /></div>
+    <div className="section-heading"><div><h2 id="orders-title">Orders <span id="order-count" className="count">{resource.data.length}</span></h2><p className="small muted">Choose Process payment or Cancel while an order is pending.</p></div><ResourceStatus name="orders" resource={resource} /></div>
     <ResourceError name="orders" resource={resource} />
+    {paymentResult.message && <p className={`small form-result ${paymentResult.error ? 'error' : 'success'} cancellation-result`} role="status">{paymentResult.message}</p>}
+    {cancellationResult.message && <p className={`small form-result ${cancellationResult.error ? 'error' : 'success'} cancellation-result`} role="status">{cancellationResult.message}</p>}
     <div className="table-scroll"><table><caption className="sr-only">Orders and payment status</caption><thead><tr><th>Order</th><th>Product</th><th>Customer</th><th>Qty</th><th>Total</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody id="order-rows">
-      {resource.data.length ? resource.data.map((item) => <tr key={item.id} className={item.id === selectedOrder ? 'selected-row' : ''}><td><code title={item.id}>{shortId(item.id)}</code></td><td><span className="product-name">{products.find((p) => p.id === item.productId)?.name || shortId(item.productId)}</span></td><td>{item.customerEmail}</td><td>{item.quantity}</td><td>{amount(item.totalAmount)}</td><td><StatusBadge status={item.status} /></td><td><button type="button" className="secondary small" data-order={item.id} aria-pressed={item.id === selectedOrder} onClick={() => setSelectedOrder(item.id)}>{item.id === selectedOrder ? 'Selected' : 'Inspect'}</button></td></tr>) :
+      {resource.data.length ? resource.data.map((item) => <tr key={item.id} className={item.id === selectedOrder ? 'selected-row' : ''}><td><code title={item.id}>{shortId(item.id)}</code></td><td><span className="product-name">{products.find((p) => p.id === item.productId)?.name || shortId(item.productId)}</span></td><td>{item.customerEmail}</td><td>{item.quantity}</td><td>{amount(item.totalAmount)}</td><td><StatusBadge status={item.status} /></td><td><div className="order-actions"><button type="button" className="secondary small" data-order={item.id} aria-pressed={item.id === selectedOrder} onClick={() => setSelectedOrder(item.id)}>{item.id === selectedOrder ? 'Selected' : 'Inspect'}</button><button type="button" className="small" disabled={item.status !== 'PENDING_PAYMENT' || Boolean(cancellingOrder || payingOrder)} title={item.status === 'PENDING_PAYMENT' ? 'Start payment for this order' : 'Only pending orders can request payment'} onClick={() => onPay(item.id)} aria-label={`Process payment for order ${shortId(item.id)}`}>{payingOrder === item.id ? 'Processing…' : 'Process payment'}</button><button type="button" className="secondary small" disabled={item.status !== 'PENDING_PAYMENT' || Boolean(cancellingOrder || payingOrder)} title={item.status === 'PENDING_PAYMENT' ? 'Cancel this pending order' : 'Only pending orders can be cancelled'} onClick={() => onCancel(item.id)} aria-label={`Cancel order ${shortId(item.id)}`}>{cancellingOrder === item.id ? 'Cancelling…' : 'Cancel'}</button></div></td></tr>) :
         <tr><td colSpan="7" className="empty">{resource.error ? 'Orders could not be loaded.' : 'No orders yet. Place an order to start the flow.'}</td></tr>}
     </tbody></table></div>
     <div id="selected-order" className="order-detail" hidden={!selectedOrder}>{selectedOrder && <>
       <p><strong>Order</strong> <code>{selectedOrder}</code></p>
-      <div className="observations"><Badge tone={created ? 'good' : 'neutral'}>{created ? 'order-created observed' : 'No order-created in retained history'}</Badge><Badge tone={payment ? payment.topic === 'payment-failed' ? 'bad' : 'good' : 'neutral'}>{payment ? `${payment.topic} observed` : 'No payment event in retained history'}</Badge>{order && <StatusBadge status={order.status} />}</div>
+      <div className="observations"><Badge tone={created ? 'good' : 'neutral'}>{created ? 'order-created observed' : 'No order-created in retained history'}</Badge><Badge tone={requested ? 'pending' : 'neutral'}>{requested ? 'payment-requested observed' : 'No payment request in retained history'}</Badge><Badge tone={payment ? payment.topic === 'payment-failed' ? 'bad' : 'good' : 'neutral'}>{payment ? `${payment.topic} observed` : 'No payment result in retained history'}</Badge>{order && <StatusBadge status={order.status} />}</div>
       {order ? <details data-key="order-json"><summary>Order service response</summary><pre>{pretty(order)}</pre></details> : <p className="muted">This order is not in the current order response.</p>}
     </>}</div>
   </section>;
@@ -121,11 +124,11 @@ function Events({ resource, selectedOrder, setSelectedOrder }) {
 
 function Requests({ requests, clear }) {
   return <section className="panel" aria-labelledby="requests-title">
-    <div className="section-heading"><div><h2 id="requests-title">Browser requests</h2><p className="small muted">Inspect the request and response for products and orders created here. Background refreshes are omitted.</p></div><button id="clear-requests" type="button" className="secondary small" onClick={clear}>Clear</button></div>
+    <div className="section-heading"><div><h2 id="requests-title">Browser requests</h2><p className="small muted">Inspect product, order, payment, and cancellation requests. Background refreshes are omitted.</p></div><button id="clear-requests" type="button" className="secondary small" onClick={clear}>Clear</button></div>
     <div id="request-list">{requests.length ? requests.map((entry) => <details className="request-item" data-key={entry.id} key={entry.id}>
-      <summary><span className="event-title">POST {entry.path}</span><Badge tone={entry.error ? 'bad' : 'good'}>{entry.status || 'Network error'}</Badge><span className="event-meta">{entry.duration} ms · {time(entry.at)}</span></summary>
+      <summary><span className="event-title">{entry.method} {entry.path}</span><Badge tone={entry.error ? 'bad' : 'good'}>{entry.status || 'Network error'}</Badge><span className="event-meta">{entry.duration} ms · {time(entry.at)}</span></summary>
       <div className="payload-body">{entry.error && <p>{entry.error}</p>}<p>Request</p><pre>{pretty(entry.body)}</pre><p>Response</p><pre>{pretty(entry.response)}</pre></div>
-    </details>) : <p className="empty">Create a product or place an order to see its HTTP payload.</p>}</div>
+    </details>) : <p className="empty">Create a product or order, then process or cancel a pending order to see its HTTP exchange.</p>}</div>
   </section>;
 }
 
@@ -143,6 +146,10 @@ export default function App() {
   const [requests, setRequests] = useState([]);
   const [submittingProduct, setSubmittingProduct] = useState(false);
   const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [cancellingOrder, setCancellingOrder] = useState(null);
+  const [cancellationResult, setCancellationResult] = useState({ message: '', error: false });
+  const [payingOrder, setPayingOrder] = useState(null);
+  const [paymentResult, setPaymentResult] = useState({ message: '', error: false });
   const [productResult, setProductResult] = useState({ message: '', error: false });
   const [orderResult, setOrderResult] = useState({ message: '', error: false });
 
@@ -212,13 +219,47 @@ export default function App() {
     } finally { submittingSetter(false); }
   }
 
+  async function cancelOrder(id) {
+    if (cancellingOrder || payingOrder) return;
+    setSelectedOrder(id);
+    setCancellingOrder(id);
+    setCancellationResult({ message: '', error: false });
+    try {
+      await request(`/api/orders/${id}/cancel`, { method: 'PATCH', onLog: addRequest });
+      if (refreshRef.current) await refreshRef.current;
+      updateResource('orders', { data: resourcesRef.current.orders.data.map((item) => item.id === id ? { ...item, status: 'CANCELLED' } : item) });
+      setCancellationResult({ message: `Order ${shortId(id)} cancelled. Reserved stock has been returned.`, error: false });
+      await refresh();
+    } catch (error) {
+      setCancellationResult({ message: `Order ${shortId(id)}: ${error.message}`, error: true });
+      await refresh();
+    } finally { setCancellingOrder(null); }
+  }
+
+  async function processPayment(id) {
+    if (payingOrder || cancellingOrder) return;
+    setSelectedOrder(id);
+    setPayingOrder(id);
+    setPaymentResult({ message: '', error: false });
+    try {
+      const result = await request(`/api/orders/${id}/pay`, { method: 'POST', onLog: addRequest });
+      if (refreshRef.current) await refreshRef.current;
+      updateResource('orders', { data: resourcesRef.current.orders.data.map((item) => item.id === id ? result : item) });
+      setPaymentResult({ message: `Payment requested for order ${shortId(id)}. Watch for the Kafka result.`, error: false });
+      await refresh();
+    } catch (error) {
+      setPaymentResult({ message: `Order ${shortId(id)}: ${error.message}`, error: true });
+      await refresh();
+    } finally { setPayingOrder(null); }
+  }
+
   return <>
     <header className="topbar"><a className="brand" href="#main"><span className="brand-mark" aria-hidden="true">↔</span> ecomm <span className="muted">/ service dashboard</span></a><nav aria-label="Sections"><a href="#products">Products</a><a href="#orders">Orders</a><a href="#events">Events</a></nav></header>
     <main id="main">
       <div className="page-heading"><div><p className="eyebrow">MICROSERVICES EXPLORER</p><h1>Follow the data.</h1><p className="muted">Create a product, place an order, and see what travels between services.</p></div><div className="refresh-controls"><label className="check-label"><input id="auto-refresh" type="checkbox" checked={autoRefresh} onChange={(event) => { setAutoRefresh(event.target.checked); if (event.target.checked) refresh(); }} /> Auto-refresh · 3s</label><button id="refresh" type="button" className="secondary" disabled={refreshing} onClick={refresh}>Refresh now</button><span id="refresh-status" className="small muted" role="status">{refreshStatus}</span></div></div>
       <Flow />
       <div className="workspace"><ProductPanel resource={resources.products} onSubmit={(event) => submit(event, 'product')} onUse={(id) => { setChosenProduct(id); quantityRef.current?.focus(); }} submitting={submittingProduct} result={productResult} /><OrderForm products={resources.products.data} chosenProduct={chosenProduct} setChosenProduct={setChosenProduct} onSubmit={(event) => submit(event, 'order')} submitting={submittingOrder} result={orderResult} quantityRef={quantityRef} /></div>
-      <Orders resource={resources.orders} products={resources.products.data} selectedOrder={selectedOrder} setSelectedOrder={setSelectedOrder} events={resources.events.data} />
+      <Orders resource={resources.orders} products={resources.products.data} selectedOrder={selectedOrder} setSelectedOrder={setSelectedOrder} events={resources.events.data} onCancel={cancelOrder} cancellingOrder={cancellingOrder} cancellationResult={cancellationResult} onPay={processPayment} payingOrder={payingOrder} paymentResult={paymentResult} />
       <Events resource={resources.events} selectedOrder={selectedOrder} setSelectedOrder={setSelectedOrder} />
       <Requests requests={requests} clear={() => setRequests([])} />
       <footer>Same-origin APIs through the frontend proxy · No sign-in</footer>

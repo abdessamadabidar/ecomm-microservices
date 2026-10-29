@@ -45,4 +45,10 @@ public class OrderController {
     ) {
         orderService.cancelOrder(id);
     }
+
+    @PostMapping("/{id}/pay")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public OrderResponse requestPayment(@PathVariable UUID id) {
+        return orderService.requestPayment(id);
+    }
 }

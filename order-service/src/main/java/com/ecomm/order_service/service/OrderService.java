@@ -7,13 +7,17 @@ import com.ecomm.order_service.dto.OrderResponse;
 import com.ecomm.order_service.entity.Order;
 import com.ecomm.order_service.entity.OrderStatus;
 import com.ecomm.order_service.event.OrderCreatedEvent;
+import com.ecomm.order_service.event.PaymentRequestedEvent;
 import com.ecomm.order_service.event.producer.OrderProducer;
 import com.ecomm.order_service.exception.OrderCancellationNotAllowedException;
 import com.ecomm.order_service.exception.OrderNotFoundException;
+import com.ecomm.order_service.exception.PaymentRequestNotAllowedException;
 import com.ecomm.order_service.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -104,6 +108,31 @@ public class OrderService {
         order.setStatus(OrderStatus.CANCELLED);
 
         orderRepository.save(order);
+    }
+
+    @Transactional
+    public OrderResponse requestPayment(UUID id) {
+        Order order = orderRepository.lockById(id)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + id));
+
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT
+                && order.getStatus() != OrderStatus.PAYMENT_PROCESSING) {
+            throw new PaymentRequestNotAllowedException("Only pending orders can request payment");
+        }
+
+        order.setStatus(OrderStatus.PAYMENT_PROCESSING);
+        orderRepository.save(order);
+
+        PaymentRequestedEvent event = new PaymentRequestedEvent(
+                UUID.randomUUID(), order.getId(), order.getTotalAmount(), Instant.now());
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                orderProducer.publishPaymentRequested(event);
+            }
+        });
+
+        return mapToResponse(order);
     }
 
     private Order findOrderById(UUID id) {

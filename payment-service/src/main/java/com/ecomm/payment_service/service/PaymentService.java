@@ -3,7 +3,7 @@ package com.ecomm.payment_service.service;
 import com.ecomm.payment_service.PaymentRepository;
 import com.ecomm.payment_service.entity.Payment;
 import com.ecomm.payment_service.entity.PaymentStatus;
-import com.ecomm.payment_service.event.OrderCreatedEvent;
+import com.ecomm.payment_service.event.PaymentRequestedEvent;
 import com.ecomm.payment_service.event.PaymentCompletedEvent;
 import com.ecomm.payment_service.event.PaymentFailedEvent;
 import com.ecomm.payment_service.event.producer.PaymentEventProducer;
@@ -27,7 +27,7 @@ public class PaymentService {
     private final PaymentEventProducer eventProducer;
 
     public void processPayment(
-            OrderCreatedEvent event
+            PaymentRequestedEvent event
     ) {
 
         if (paymentRepository.existsByOrderId(

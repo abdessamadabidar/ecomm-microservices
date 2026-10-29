@@ -3,6 +3,7 @@ package com.ecomm.notification_service.consumer;
 import com.ecomm.notification_service.event.OrderCreatedEvent;
 import com.ecomm.notification_service.event.PaymentCompletedEvent;
 import com.ecomm.notification_service.event.PaymentFailedEvent;
+import com.ecomm.notification_service.event.PaymentRequestedEvent;
 import com.ecomm.notification_service.observation.EventStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ public class OrderCreatedConsumer {
     private final EventStore eventStore;
 
     private static final String ORDER_CREATED_TOPIC = "order-created";
+    private static final String PAYMENT_REQUESTED_TOPIC = "payment-requested";
     private static final String PAYMENT_COMPLETED_TOPIC = "payment-completed";
     private static final String PAYMENT_FAILED_TOPIC = "payment-failed";
 
@@ -37,6 +39,12 @@ public class OrderCreatedConsumer {
         );
 
         sendNotification(event);
+    }
+
+    @KafkaListener(topics = PAYMENT_REQUESTED_TOPIC, groupId = "notification-service")
+    public void paymentRequested(PaymentRequestedEvent event) {
+        eventStore.record(PAYMENT_REQUESTED_TOPIC, "order-service", event.orderId(), event);
+        log.info("Payment requested for order {}", event.orderId());
     }
 
     @KafkaListener(
@@ -75,7 +83,7 @@ public class OrderCreatedConsumer {
     private void sendNotification(OrderCreatedEvent event) {
 
         log.info(
-                "Sending order confirmation notification to {} for order {}",
+                "Sending order received notification to {} for order {}",
                 event.customerEmail(),
                 event.orderId()
         );

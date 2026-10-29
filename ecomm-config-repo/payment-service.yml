@@ -24,7 +24,7 @@ spring:
 
       properties:
         "[spring.json.use.type.headers]": false
-        "[spring.json.value.default.type]": "com.ecomm.payment_service.event.OrderCreatedEvent"
+        "[spring.json.value.default.type]": "com.ecomm.payment_service.event.PaymentRequestedEvent"
 
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer

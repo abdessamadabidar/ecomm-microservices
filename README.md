@@ -9,10 +9,13 @@ and uses Vite. It has no authentication.
 1. The browser creates products and orders through the gateway.
 2. Order service fetches the product over HTTP with OpenFeign, checks available
    stock, saves an order as `PENDING_PAYMENT`, and publishes `order-created`.
-3. Payment service consumes that event, saves a payment, and publishes
+3. The order remains `PENDING_PAYMENT`, so it can be cancelled and its stock
+   reservation returned. Choosing **Process payment** changes it to
+   `PAYMENT_PROCESSING` and publishes `payment-requested`.
+4. Payment service consumes `payment-requested`, saves a payment, and publishes
    `payment-completed` or `payment-failed`.
-4. Order service consumes the payment result and changes the order to `CONFIRMED`
-   or `PAYMENT_FAILED`. Notification service consumes all three event types and
+5. Order service consumes the payment result and changes the order to `CONFIRMED`
+   or `PAYMENT_FAILED`. Notification service observes all four event types and
    logs simulated notifications.
 
 Eureka provides service discovery; Config Server supplies shared/service settings.
@@ -31,7 +34,7 @@ CREATE DATABASE ecomm_order_db;
 CREATE DATABASE ecomm_payment_db;
 ```
 
-Kafka needs the topics `order-created`, `payment-completed`, and `payment-failed`
+Kafka needs the topics `order-created`, `payment-requested`, `payment-completed`, and `payment-failed`
 (or broker topic auto-creation enabled). Set `KAFKA_BOOTSTRAP_SERVERS` on the
 consuming/publishing services if your Kafka address differs.
 
@@ -59,7 +62,7 @@ Start discovery next, then each remaining service in its own terminal. Run
 | `discovery-service` | 8761 | Eureka registry |
 | `product-service` | 8081 | Product catalog |
 | `order-service` | 8082 | Order API and payment-result consumer |
-| `payment-service` | 8083 configured | Kafka payment processor |
+| `payment-service` | 8083 configured | Processes requested payments from Kafka |
 | `notification-service` | 8084 | Notification consumer and event feed |
 | `api-gateway` | 8080 | Dashboard and API routing |
 
@@ -81,14 +84,15 @@ The dashboard retries reads every three seconds while visible.
 
 ## Try the dashboard
 
-1. Create a product with unit price `50` and stock `200`.
-2. Place an order for quantity `100` with a demo email. The total is `5,000`, so
-   the current payment implementation accepts it.
-3. Select the order to see its status, response JSON, and matching Kafka events.
+1. Create a product with unit price `50` and stock `300`.
+2. Place an order for quantity `100` with a demo email. It stays pending, with
+   stock reserved. Try **Cancel** on one pending order to see stock return.
+3. Place another order, then choose **Process payment**. A total of `5,000` is
+   accepted. Select the order to see its status, response JSON, and Kafka events.
    Expand an event to inspect its payload, including IDs and timestamps.
-4. Order quantity `101`. The total exceeds `5,000`, so payment fails; inspect the
-   failure reason in the `payment-failed` payload.
-5. Expand **Browser requests** to compare each submitted JSON body and response.
+4. Order quantity `101` and process payment. The total exceeds `5,000`, so
+   payment fails; inspect the failure reason in the `payment-failed` payload.
+5. Expand **Browser requests** to compare each write request and response.
    Pause auto-refresh or use **Refresh now** as needed.
 
 Stock is reserved atomically when an order is placed. A failed payment or a
@@ -106,6 +110,8 @@ would be the next reliability improvement.
 | Endpoint | Service | Response |
 | --- | --- | --- |
 | `GET /api/products` | Product | Existing product list service method exposed over HTTP |
+| `POST /api/orders/{id}/pay` | Order, via gateway | Starts payment for a pending order (`202`) |
+| `PATCH /api/orders/{id}/cancel` | Order, via gateway | Cancels a pending order and returns stock (`204`) |
 | `GET /api/events` | Notification, via gateway | Latest received Kafka observations, newest first |
 | `GET /api/events?orderId=<uuid>` | Notification, via gateway | Retained observations for one order |
 
@@ -121,7 +127,7 @@ event archive or distributed tracing system. A received notification event does
 not prove other consumers received it. Order status comes from the order API.
 Messages may appear in a different receipt order across Kafka topics.
 
-The browser keeps the latest 20 creation requests in memory for the current page
+The browser keeps the latest 20 write requests in memory for the current page
 session. It does not record internal HTTP calls or Kafka headers. The frontend
 calls `/api/*` through the Vite proxy in development and preview.
 

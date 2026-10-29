@@ -30,7 +30,7 @@ class PaymentInventoryTests {
     void failedPaymentReturnsReservedStockOnce() {
         UUID productId = UUID.randomUUID(), orderId = UUID.randomUUID();
         Order order = Order.builder().id(orderId).productId(productId).quantity(2)
-                .status(OrderStatus.PENDING_PAYMENT).build();
+                .status(OrderStatus.PAYMENT_PROCESSING).build();
         when(orders.lockById(orderId)).thenReturn(Optional.of(order));
         PaymentFailedEvent event = new PaymentFailedEvent(UUID.randomUUID(), UUID.randomUUID(),
                 orderId, BigDecimal.TEN, "declined", Instant.now());

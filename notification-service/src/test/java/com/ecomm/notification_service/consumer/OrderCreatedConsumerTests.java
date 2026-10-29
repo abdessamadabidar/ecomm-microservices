@@ -3,6 +3,7 @@ package com.ecomm.notification_service.consumer;
 import com.ecomm.notification_service.event.OrderCreatedEvent;
 import com.ecomm.notification_service.event.PaymentCompletedEvent;
 import com.ecomm.notification_service.event.PaymentFailedEvent;
+import com.ecomm.notification_service.event.PaymentRequestedEvent;
 import com.ecomm.notification_service.observation.EventStore;
 import com.ecomm.notification_service.observation.ObservedEvent;
 import org.junit.jupiter.api.Test;
@@ -23,16 +24,19 @@ class OrderCreatedConsumerTests {
                 "Keyboard", "demo@example.com", new BigDecimal("75.00"), Instant.now());
         var completed = new PaymentCompletedEvent(UUID.randomUUID(), UUID.randomUUID(),
                 orderId, new BigDecimal("75.00"), "transaction", Instant.now());
+        var requested = new PaymentRequestedEvent(UUID.randomUUID(), orderId,
+                new BigDecimal("75.00"), Instant.now());
         var failed = new PaymentFailedEvent(UUID.randomUUID(), UUID.randomUUID(),
                 orderId, new BigDecimal("6000.00"), "Payment amount exceeds demo limit", Instant.now());
 
         consumer.orderCreated(created);
+        consumer.paymentRequested(requested);
         consumer.paymentCompleted(completed);
         consumer.paymentFailed(failed);
 
         assertThat(store.findAll(orderId)).extracting(ObservedEvent::payload)
-                .containsExactly(failed, completed, created);
+                .containsExactly(failed, completed, requested, created);
         assertThat(store.findAll(orderId)).extracting(ObservedEvent::topic)
-                .containsExactly("payment-failed", "payment-completed", "order-created");
+                .containsExactly("payment-failed", "payment-completed", "payment-requested", "order-created");
     }
 }

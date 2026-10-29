@@ -18,4 +18,4 @@ spring:
 
       properties:
         "[spring.json.trusted.packages]": "com.ecomm.notification_service.event"
-        "[spring.json.type.mapping]": "order-created:com.ecomm.notification_service.event.OrderCreatedEvent,payment-completed:com.ecomm.notification_service.event.PaymentCompletedEvent,payment-failed:com.ecomm.notification_service.event.PaymentFailedEvent"
+        "[spring.json.type.mapping]": "order-created:com.ecomm.notification_service.event.OrderCreatedEvent,payment-requested:com.ecomm.notification_service.event.PaymentRequestedEvent,payment-completed:com.ecomm.notification_service.event.PaymentCompletedEvent,payment-failed:com.ecomm.notification_service.event.PaymentFailedEvent"

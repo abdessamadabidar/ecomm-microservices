@@ -1,6 +1,7 @@
 package com.ecomm.order_service.event.producer;
 
 import com.ecomm.order_service.event.OrderCreatedEvent;
+import com.ecomm.order_service.event.PaymentRequestedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -10,7 +11,8 @@ import org.springframework.stereotype.Service;
 public class OrderProducer {
 
     private static final String TOPIC = "order-created";
-    private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+    private static final String PAYMENT_REQUESTED_TOPIC = "payment-requested";
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     public void publishOrderCreated(OrderCreatedEvent event) {
         kafkaTemplate.send(
@@ -18,5 +20,9 @@ public class OrderProducer {
                 event.orderId().toString(),
                 event
         );
+    }
+
+    public void publishPaymentRequested(PaymentRequestedEvent event) {
+        kafkaTemplate.send(PAYMENT_REQUESTED_TOPIC, event.orderId().toString(), event);
     }
 }

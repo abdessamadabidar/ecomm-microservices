@@ -6,13 +6,16 @@ import com.ecomm.order_service.dto.OrderRequest;
 import com.ecomm.order_service.entity.Order;
 import com.ecomm.order_service.entity.OrderStatus;
 import com.ecomm.order_service.event.producer.OrderProducer;
+import com.ecomm.order_service.event.PaymentRequestedEvent;
 import com.ecomm.order_service.exception.InsufficientStockException;
+import com.ecomm.order_service.exception.OrderCancellationNotAllowedException;
 import com.ecomm.order_service.repository.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -70,5 +73,28 @@ class OrderInventoryTests {
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
         verify(products, times(1)).release(productId, orderId);
+    }
+
+    @Test
+    void paymentRequestMovesOrderOutOfCancellableStateAndPublishesAfterCommit() {
+        UUID orderId = UUID.randomUUID();
+        Order order = Order.builder().id(orderId).quantity(2).totalAmount(BigDecimal.TEN)
+                .status(OrderStatus.PENDING_PAYMENT).build();
+        when(orders.lockById(orderId)).thenReturn(Optional.of(order));
+        when(orders.save(order)).thenReturn(order);
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            var result = service.requestPayment(orderId);
+            assertThat(result.status()).isEqualTo(OrderStatus.PAYMENT_PROCESSING);
+            verify(producer, never()).publishPaymentRequested(any());
+            assertThatThrownBy(() -> service.cancelOrder(orderId))
+                    .isInstanceOf(OrderCancellationNotAllowedException.class);
+            TransactionSynchronizationManager.getSynchronizations().forEach(sync -> sync.afterCommit());
+            verify(producer).publishPaymentRequested(argThat((PaymentRequestedEvent event) ->
+                    event.orderId().equals(orderId) && event.totalAmount().equals(BigDecimal.TEN)));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 }

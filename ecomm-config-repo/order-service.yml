@@ -24,7 +24,7 @@ spring:
 
       properties:
         "[spring.json.add.type.headers]": true
-        "[spring.json.type.mapping]": "order-created:com.ecomm.order_service.event.OrderCreatedEvent"
+        "[spring.json.type.mapping]": "order-created:com.ecomm.order_service.event.OrderCreatedEvent,payment-requested:com.ecomm.order_service.event.PaymentRequestedEvent"
 
     consumer:
       group-id: order-service
