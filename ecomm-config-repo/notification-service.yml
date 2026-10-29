@@ -1,0 +1,21 @@
+
+server:
+  port: 8084
+
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+    consumer:
+      group-id: notification-service
+      auto-offset-reset: earliest
+
+      key-deserializer:
+        org.apache.kafka.common.serialization.StringDeserializer
+
+      value-deserializer:
+        org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+
+      properties:
+        "[spring.json.trusted.packages]": "com.ecomm.notification_service.event"
+        "[spring.json.type.mapping]": "order-created:com.ecomm.notification_service.event.OrderCreatedEvent,payment-completed:com.ecomm.notification_service.event.PaymentCompletedEvent,payment-failed:com.ecomm.notification_service.event.PaymentFailedEvent"

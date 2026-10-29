@@ -1,0 +1,14 @@
+# Generated files from every service and the React app
+**/target/
+**/node_modules/
+**/dist/
+
+# Local editor and machine state
+.idea/
+.vscode/
+*.iml
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
