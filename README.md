@@ -28,7 +28,15 @@ change that existing constraint automatically.
 
 Prerequisites: Java 21, PostgreSQL on `localhost:5432`, and Kafka on
 `localhost:9092`. Maven is supplied by each service's `mvnw` wrapper. The default
-database credentials in `ecomm-config-repo` are `postgres` / `postgres`.
+database credentials in the separate `ecomm-config-repo` are `postgres` / `postgres`.
+Clone that repository inside this project before starting Config Server:
+
+```bash
+git clone https://github.com/abdessamadabidar/ecomm-config-repo.git ecomm-config-repo
+```
+
+The main repository ignores this directory; commit configuration changes from
+inside `ecomm-config-repo/` and push them to its own remote.
 Create the three databases if they do not already exist:
 
 ```sql

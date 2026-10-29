@@ -12,3 +12,6 @@
 .env
 .env.*
 !.env.example
+
+# Clone the independent configuration repository here for local development.
+/ecomm-config-repo/
