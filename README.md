@@ -77,6 +77,35 @@ Start discovery next, then each remaining service in its own terminal. Run
 | `notification-service` | 8084 | Notification consumer and event feed |
 | `api-gateway` | 8080 | Dashboard and API routing |
 
+## Database settings for Kubernetes
+
+Product, Order, and Payment Service read `SPRING_DATASOURCE_URL`,
+`SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` from their own pod
+environment. The values in the separate config repository retain localhost
+defaults for local development.
+
+For each database-backed Helm release, set `database.enabled=true`, its own
+`database.url`, and `database.existingSecret`. The chart reads the username and
+password from that Secret using `database.usernameKey` and
+`database.passwordKey` (both default to `username` and `password`). For example,
+a Product Service values file can contain:
+
+```yaml
+service:
+  port: 8081
+database:
+  enabled: true
+  url: jdbc:postgresql://postgres:5432/ecomm_product_db
+  existingSecret: product-db-credentials
+```
+
+Use the matching database URL and Secret for Order and Payment Service. Create
+the Secrets in the release namespace through the deployment pipeline or a
+secret provider; do not commit credentials or pass them in Helm values. The
+optional in-cluster PostgreSQL values file at `iac/helm/values/pg.yaml` expects
+an existing `pg-creds` Secret with a `POSTGRES_PASSWORD` key. The repository no
+longer includes a Secret containing a literal password.
+
 Start the React frontend in another terminal:
 
 ```bash

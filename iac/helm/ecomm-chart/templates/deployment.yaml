@@ -44,6 +44,26 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+          {{- if or .Values.database.enabled .Values.env }}
+          env:
+            {{- if .Values.database.enabled }}
+            - name: SPRING_DATASOURCE_URL
+              value: {{ required "database.url is required when database.enabled=true" .Values.database.url | quote }}
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "database.existingSecret is required when database.enabled=true" .Values.database.existingSecret | quote }}
+                  key: {{ .Values.database.usernameKey | quote }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | quote }}
+                  key: {{ .Values.database.passwordKey | quote }}
+            {{- end }}
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
           {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
