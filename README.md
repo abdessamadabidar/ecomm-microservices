@@ -20,6 +20,9 @@ and uses Vite. It has no authentication.
 
 Eureka provides service discovery; Config Server supplies shared/service settings.
 Products, orders, and payments use separate PostgreSQL databases.
+On startup, Order Service widens the existing `orders_status_check` constraint
+when a new order status has been added. Hibernate's `ddl-auto: update` does not
+change that existing constraint automatically.
 
 ## Run locally
 
