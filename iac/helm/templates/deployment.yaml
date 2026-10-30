@@ -55,7 +55,7 @@ spec:
             {{- end }}
           readinessProbe:
             httpGet:
-              path: /actuator/health
+              path: {{ .healthPath | default "/actuator/health" | quote }}
               port: http
             periodSeconds: 10
 {{- end }}

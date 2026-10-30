@@ -44,3 +44,8 @@ services:
   - name: api-gateway
     port: 8080
     configClient: true
+
+  - name: frontend
+    port: 80
+    serviceType: LoadBalancer
+    healthPath: /
