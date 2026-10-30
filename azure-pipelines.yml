@@ -38,13 +38,13 @@ steps:
         REGISTRY=$(az acr show --name "$ACR_NAME" \
           --query loginServer --output tsv)
 
-        az acr login --name $ACR_NAME"
+        az acr login --name "$ACR_NAME"
 
         for service in config-server discovery-service product-service \
                       order-service payment-service notification-service \
                       api-gateway
         do
-          IMAGE="$REGISTRY/$service/$Build.BuildId"
+          IMAGE="$REGISTRY/$service:$BUILD_BUILDID"
 
           docker build -t "$IMAGE" "./$service"
 
