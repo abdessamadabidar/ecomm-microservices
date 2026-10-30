@@ -14,7 +14,7 @@ steps:
       jdkArchitectureOption: x64
       jdkSourceOption: PreInstalled
   - bash: |
-      set -euo pipefail
+      set -e
       for service in config-server discovery-service product-service \
                       order-service payment-service notification-service \
                       api-gateway
