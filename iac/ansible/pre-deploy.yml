@@ -1,0 +1,29 @@
+---
+- name: Prepare the application namespace and database Secret
+  hosts: local
+  gather_facts: false
+
+  tasks:
+    - name: Create the application namespace
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: ecomm
+
+    - name: Create the database Secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: ecomm-db
+            namespace: ecomm
+          type: Opaque
+          stringData:
+            username: "{{ lookup('ansible.builtin.env', 'DB_USERNAME') }}"
+            password: "{{ lookup('ansible.builtin.env', 'DB_PASSWORD') }}"
+      no_log: true

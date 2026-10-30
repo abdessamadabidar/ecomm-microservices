@@ -73,7 +73,7 @@ steps:
         
         python3 -m venv .venv-ansible
         source .venv-ansible/bin/activate
-        pip install ansible-core
+        pip install ansible-core kubernetes
 
         ansible-galaxy collection install kubernetes.core
 
@@ -85,3 +85,26 @@ steps:
         ansible-playbook \
           -i iac/ansible/inventory.ini \
           iac/ansible/install-argocd.yml
+  
+  - task: AzureCLI@2
+    displayName: Prepare application namespace and database Secret
+    inputs:
+      azureSubscription: azure-ecomm-dev
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -e
+
+        source .venv-ansible/bin/activate
+
+        az aks get-credentials \
+          --resource-group rg-ecomm-dev \
+          --name aks-ecomm-dev \
+          --admin
+
+        ansible-playbook \
+          -i iac/ansible/inventory.ini \
+          iac/ansible/pre-deploy.yml
+    env:
+      DB_USERNAME: $(DB_USERNAME)
+      DB_PASSWORD: $(DB_PASSWORD)

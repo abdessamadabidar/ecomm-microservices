@@ -1,0 +1,61 @@
+{{- range .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .name }}
+    spec:
+      containers:
+        - name: {{ .name }}
+          image: "{{ $.Values.image.registry }}/{{ .name }}:{{ $.Values.image.tag }}"
+          ports:
+            - name: http
+              containerPort: {{ .port }}
+          env:
+            - name: SERVER_PORT
+              value: {{ .port | quote }}
+            - name: EUREKA_URL
+              value: "http://discovery-service:8761/eureka/"
+            {{- if eq .name "config-server" }}
+            - name: CONFIG_SERVER_PROFILE
+              value: "git"
+            - name: CONFIG_REPO_URI
+              value: {{ $.Values.configRepo.uri | quote }}
+            {{- end }}
+            {{- if .configClient }}
+            - name: CONFIG_SERVER_URL
+              value: "http://config-server:8888"
+            {{- end }}
+            {{- if .kafka }}
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ $.Values.kafka.bootstrapServers | quote }}
+            {{- end }}
+            {{- if .database }}
+            - name: SPRING_DATASOURCE_URL
+              value: {{ printf "jdbc:postgresql://%s:5432/%s?sslmode=require" $.Values.database.host .database | quote }}
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.database.secretName }}
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.database.secretName }}
+                  key: password
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            periodSeconds: 10
+{{- end }}

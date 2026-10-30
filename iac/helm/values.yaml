@@ -1,0 +1,46 @@
+image:
+  registry: ecommcontainerregistry1.azurecr.io
+  tag: "13"
+
+configRepo:
+  uri: https://github.com/abdessamadabidar/ecomm-microservices.git
+
+kafka:
+  bootstrapServers: "kafka:9092"
+
+database:
+  host: pg-ecomm-devv0.postgres.database.azure.com
+  secretName: ecomm-db
+
+services:
+  - name: config-server
+    port: 8888
+
+  - name: discovery-service
+    port: 8761
+
+  - name: product-service
+    port: 8081
+    configClient: true
+    database: ecomm_product_db
+
+  - name: order-service
+    port: 8082
+    configClient: true
+    database: ecomm_order_db
+    kafka: true
+
+  - name: payment-service
+    port: 8083
+    configClient: true
+    database: ecomm_payment_db
+    kafka: true
+
+  - name: notification-service
+    port: 8084
+    configClient: true
+    kafka: true
+
+  - name: api-gateway
+    port: 8080
+    configClient: true
