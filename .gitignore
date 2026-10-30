@@ -15,3 +15,16 @@
 
 # Clone the independent configuration repository here for local development.
 /ecomm-config-repo/
+
+
+# Terraform working directories
+**/.terraform/
+
+# State files
+*.tfstate
+*.tfstate.*
+
+# Local variable files and saved plans
+*.tfvars
+*.tfvars.json
+*.tfplan
