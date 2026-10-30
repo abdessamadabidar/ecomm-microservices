@@ -34,6 +34,12 @@ spec:
             {{- if .configClient }}
             - name: CONFIG_SERVER_URL
               value: "http://config-server:8888"
+            - name: EUREKA_INSTANCE_PREFER_IP_ADDRESS
+              value: "true"
+            - name: EUREKA_INSTANCE_IP_ADDRESS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             {{- end }}
             {{- if .kafka }}
             - name: KAFKA_BOOTSTRAP_SERVERS
