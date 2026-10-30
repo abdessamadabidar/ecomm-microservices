@@ -104,7 +104,7 @@ steps:
 
         ansible-playbook \
           -i iac/ansible/inventory.ini \
-          iac/ansible/pre-deploy.yml
+          iac/ansible/deploy.yml
     env:
       DB_USERNAME: $(DB_USERNAME)
       DB_PASSWORD: $(DB_PASSWORD)
