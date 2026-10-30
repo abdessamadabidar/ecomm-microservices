@@ -10,10 +10,21 @@ pool:
   vmImage: ubuntu-latest
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+  - checkout: self
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+  - task: JavaToolInstaller@0
+    displayName: Use Java 21
+    inputs:
+      versionSpec: '21'
+      jdkArchitectureOption: x64
+      jdkSourceOption: PreInstalled
+  
+  - bash: |
+      set -e
+      for service in config-server discovery-service product-service \
+                      order-service payment-service notification-serivce \
+                      api-gateway
+      do
+        mvn -B -f "$service/pom.xml" clean verify
+      done
+    displayName: Build and test backend services 
