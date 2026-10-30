@@ -55,3 +55,33 @@ steps:
 
         docker build -t "$IMAGE" ./frontend
         docker push "$IMAGE"
+
+  - task: HelmInstaller@1
+    displayName: Install Helm
+    inputs:
+      helmVersionToInstall: '3.17.3'
+    
+  
+  - task: AzureCLI@2
+    displayName: Install Argo CD with Ansible
+    inputs:
+      azureSubscription: azure-ecomm-dev
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -e
+        
+        python3 -m venv .venv-ansible
+        source .venv-ansible/bin/activate
+        pip install ansible-core
+
+        ansible-galaxy collection install kubernetes.core
+
+        az aks get-credentials \
+          --resource-group rg-ecomm-dev \
+          --name aks-ecomm-dev \
+          --admin
+
+        ansible-playbook \
+          -i iac/ansible/inventory.ini \
+          iac/ansible/install-argocd.yml
