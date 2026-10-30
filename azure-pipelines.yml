@@ -19,8 +19,6 @@ steps:
                       order-service payment-service notification-service \
                       api-gateway
       do
-        # These context tests require live Config Server, PostgreSQL, or Kafka.
-        # Run the infrastructure-free tests in CI and smoke-test after deployment.
         mvn -B -f "$service/pom.xml" clean verify \
           '-Dsurefire.excludes=**/*ApplicationTests.java'
       done
