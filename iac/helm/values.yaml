@@ -3,7 +3,7 @@ image:
   tag: "13"
 
 configRepo:
-  uri: https://github.com/abdessamadabidar/ecomm-microservices.git
+  uri: https://github.com/abdessamadabidar/ecomm-config-repo.git
 
 kafka:
   bootstrapServers: "kafka:9092"
