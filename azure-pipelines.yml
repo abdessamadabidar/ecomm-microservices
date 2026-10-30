@@ -13,6 +13,7 @@ steps:
       versionSpec: '21'
       jdkArchitectureOption: x64
       jdkSourceOption: PreInstalled
+  
   - bash: |
       set -e
       for service in config-server discovery-service product-service \
@@ -23,3 +24,29 @@ steps:
           '-Dsurefire.excludes=**/*ApplicationTests.java'
       done
     displayName: Build and test backend services
+
+  - task: AzureCLI@2
+    displayName: Build and push backend images
+    inputs:
+      azureSubscription: azure-ecomm-dev
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -e
+
+        ACR_NAME="EcommContainerRegistry1"
+        REGISTRY=$(az acr show --name "$ACR_NAME" \
+          --query loginServer --output tsv)
+
+        az acr login --name $ACR_NAME"
+
+        for service in config-server discovery-service product-service \
+                      order-service payment-service notification-service \
+                      api-gateway
+        do
+          IMAGE="$REGISTRY/$service/$Build.BuildId"
+
+          docker build -t "$IMAGE" "./$service"
+
+          docker push "$IMAGE"
+        done
