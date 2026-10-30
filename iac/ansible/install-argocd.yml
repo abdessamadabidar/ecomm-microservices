@@ -18,3 +18,7 @@
         update_repo_cache: true
         wait: true
         timeout: 10m
+        values:
+          server:
+            service:
+              type: LoadBalancer
