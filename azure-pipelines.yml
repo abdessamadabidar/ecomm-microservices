@@ -26,7 +26,7 @@ steps:
     displayName: Build and test backend services
 
   - task: AzureCLI@2
-    displayName: Build and push backend images
+    displayName: Build and push application images
     inputs:
       azureSubscription: azure-ecomm-dev
       scriptType: bash
@@ -50,3 +50,8 @@ steps:
 
           docker push "$IMAGE"
         done
+
+        IMAGE="$REGISTRY/frontend:$BUILD_BUILDID"
+
+        docker build -t "$IMAGE" ./frontend
+        docker push "$IMAGE"
