@@ -27,3 +27,8 @@
             username: "{{ lookup('ansible.builtin.env', 'DB_USERNAME') }}"
             password: "{{ lookup('ansible.builtin.env', 'DB_PASSWORD') }}"
       no_log: true
+  
+    - name: Create the Argo CD Application
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ playbook_dir }}/../argocd/app.yml"

@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ecomm
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/abdessamadabidar/ecomm-microservices.git
+    targetRevision: master
+    path: iac/helm
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ecomm
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
