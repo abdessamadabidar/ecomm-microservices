@@ -30,6 +30,16 @@ resource "azurerm_postgresql_flexible_server" "ecomm" {
   sku_name   = "B_Standard_B1ms"
   depends_on = [azurerm_private_dns_zone_virtual_network_link.db]
 
+  lifecycle {
+    ignore_changes = [zone]
+  }
+
+}
+
+resource "azurerm_postgresql_flexible_server_configuration" "wal_level" {
+  name      = "wal_level"
+  server_id = azurerm_postgresql_flexible_server.ecomm.id
+  value     = "logical"
 }
 
 resource "azurerm_postgresql_flexible_server_database" "ecomm" {

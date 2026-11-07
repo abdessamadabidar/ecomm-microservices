@@ -6,6 +6,7 @@ import com.ecomm.order_service.dto.OrderRequest;
 import com.ecomm.order_service.dto.OrderResponse;
 import com.ecomm.order_service.entity.Order;
 import com.ecomm.order_service.entity.OrderStatus;
+import com.ecomm.order_service.entity.OutboxEvent;
 import com.ecomm.order_service.event.OrderCreatedEvent;
 import com.ecomm.order_service.event.PaymentRequestedEvent;
 import com.ecomm.order_service.event.producer.OrderProducer;
@@ -13,6 +14,8 @@ import com.ecomm.order_service.exception.OrderCancellationNotAllowedException;
 import com.ecomm.order_service.exception.OrderNotFoundException;
 import com.ecomm.order_service.exception.PaymentRequestNotAllowedException;
 import com.ecomm.order_service.repository.OrderRepository;
+import com.ecomm.order_service.repository.OutboxEventRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,15 +34,16 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductClient productClient;
     private final OrderProducer orderProducer;
+    private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
 
+    @Transactional
     public OrderResponse createOrder(OrderRequest request) {
-
         ProductClientResponse product =
                 productClient.getProduct(request.productId());
 
-        BigDecimal totalAmount =
-                product.price()
-                        .multiply(BigDecimal.valueOf(request.quantity()));
+        BigDecimal totalAmount = product.price()
+                .multiply(BigDecimal.valueOf(request.quantity()));
 
         Order order = Order.builder()
                 .id(UUID.randomUUID())
@@ -53,30 +57,37 @@ public class OrderService {
         productClient.reserve(product.id(), order.getId(),
                 new ProductClient.ReservationRequest(request.quantity()));
 
-        try {
-            Order savedOrder = orderRepository.save(order);
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status == STATUS_ROLLED_BACK) {
+                            productClient.release(product.id(), order.getId());
+                        }
+                    }
+                });
 
-            OrderCreatedEvent event = new OrderCreatedEvent(
-                    UUID.randomUUID(),
-                    savedOrder.getId(),
-                    product.id(),
-                    product.name(),
-                    savedOrder.getCustomerEmail(),
-                    savedOrder.getTotalAmount(),
-                    Instant.now()
-            );
+        orderRepository.save(order);
 
-            orderProducer.publishOrderCreated(event);
+        OrderCreatedEvent event = new OrderCreatedEvent(
+                UUID.randomUUID(),
+                order.getId(),
+                product.id(),
+                product.name(),
+                order.getCustomerEmail(),
+                order.getTotalAmount(),
+                Instant.now()
+        );
 
-            return mapToResponse(savedOrder);
-        } catch (RuntimeException failure) {
-            try {
-                productClient.release(product.id(), order.getId());
-            } catch (RuntimeException releaseFailure) {
-                failure.addSuppressed(releaseFailure);
-            }
-            throw failure;
-        }
+        OutboxEvent outbox = new OutboxEvent();
+        outbox.setAggregateType("Order");
+        outbox.setAggregateId(order.getId().toString());
+        outbox.setType("OrderCreated");
+        outbox.setPayload(objectMapper.valueToTree(event));
+
+        outboxEventRepository.save(outbox);
+
+        return mapToResponse(order);
     }
 
     public List<OrderResponse> findAll() {
@@ -113,24 +124,32 @@ public class OrderService {
     @Transactional
     public OrderResponse requestPayment(UUID id) {
         Order order = orderRepository.lockById(id)
-                .orElseThrow(() -> new OrderNotFoundException("Order not found with id: " + id));
+                .orElseThrow(() ->
+                        new OrderNotFoundException("Order not found with id: " + id));
 
         if (order.getStatus() != OrderStatus.PENDING_PAYMENT
                 && order.getStatus() != OrderStatus.PAYMENT_PROCESSING) {
-            throw new PaymentRequestNotAllowedException("Only pending orders can request payment");
+            throw new PaymentRequestNotAllowedException(
+                    "Only pending orders can request payment");
         }
 
         order.setStatus(OrderStatus.PAYMENT_PROCESSING);
         orderRepository.save(order);
 
         PaymentRequestedEvent event = new PaymentRequestedEvent(
-                UUID.randomUUID(), order.getId(), order.getTotalAmount(), Instant.now());
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                orderProducer.publishPaymentRequested(event);
-            }
-        });
+                UUID.randomUUID(),
+                order.getId(),
+                order.getTotalAmount(),
+                Instant.now()
+        );
+
+        OutboxEvent outbox = new OutboxEvent();
+        outbox.setAggregateType("Order");
+        outbox.setAggregateId(order.getId().toString());
+        outbox.setType("PaymentRequested");
+        outbox.setPayload(objectMapper.valueToTree(event));
+
+        outboxEventRepository.save(outbox);
 
         return mapToResponse(order);
     }
