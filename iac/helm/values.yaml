@@ -1,6 +1,6 @@
 image:
   registry: ecommcontainerregistry1.azurecr.io
-  tag: "23"
+  tag: "24"
 
 configRepo:
   uri: https://github.com/abdessamadabidar/ecomm-config-repo.git
