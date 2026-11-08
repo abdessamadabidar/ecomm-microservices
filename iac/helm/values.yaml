@@ -12,6 +12,11 @@ database:
   host: pg-ecomm-devv0.postgres.database.azure.com
   secretName: ecomm-db
 
+kafkaConnect:
+  image: quay.io/debezium/connect:3.4
+  bootstrapServers: kafka:9092
+  port: 8085
+
 services:
   - name: config-server
     port: 8888
