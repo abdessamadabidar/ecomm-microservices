@@ -1,0 +1,4 @@
+elasticVersion: "8.19.20"
+
+elasticsearch:
+  storageSize: 5Gi

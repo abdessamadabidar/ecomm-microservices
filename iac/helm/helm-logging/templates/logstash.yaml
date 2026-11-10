@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+        - name: logstash
+          image: "docker.elastic.co/logstash/logstash:{{ .Values.elasticVersion }}"
+          args:
+            - "-e"
+            - |
+              input {
+                beats { port => 5044 }
+              }
+              output {
+                elasticsearch {
+                  hosts => ["http://elasticsearch:9200"]
+                  index => "ecomm-%{+YYYY.MM.dd}"
+                  ilm_enabled => false
+                }
+              }
+          env:
+            - name: LS_JAVA_OPTS
+              value: "-Xms512m -Xmx512m"
+            - name: XPACK_MONITORING_ENABLED
+              value: "false"
+          ports:
+            - containerPort: 5044
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              memory: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+spec:
+  selector:
+    app: logstash
+  ports:
+    - port: 5044
+      targetPort: 5044

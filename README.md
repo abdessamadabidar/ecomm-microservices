@@ -102,7 +102,7 @@ database:
 Use the matching database URL and Secret for Order and Payment Service. Create
 the Secrets in the release namespace through the deployment pipeline or a
 secret provider; do not commit credentials or pass them in Helm values. The
-optional in-cluster PostgreSQL values file at `iac/helm/values/pg.yaml` expects
+optional in-cluster PostgreSQL values file at `iac/helm/helm-app/values/pg.yaml` expects
 an existing `pg-creds` Secret with a `POSTGRES_PASSWORD` key. The repository no
 longer includes a Secret containing a literal password.
 
