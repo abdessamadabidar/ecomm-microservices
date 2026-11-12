@@ -1,6 +1,6 @@
 image:
   registry: ecommcontainerregistry1.azurecr.io
-  tag: "25"
+  tag: "27"
 
 configRepo:
   uri: https://github.com/abdessamadabidar/ecomm-config-repo.git
@@ -52,5 +52,5 @@ services:
 
   - name: frontend
     port: 80
-    serviceType: LoadBalancer
+    serviceType: ClusterIP
     healthPath: /
