@@ -20,6 +20,8 @@ spec:
           kubernetesIngress:
             enabled: true
         service:
+          annotations:
+            service.beta.kubernetes.io/azure-dns-label-name: ecomm
           spec:
             type: LoadBalancer
 
